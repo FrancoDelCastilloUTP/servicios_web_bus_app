@@ -42,28 +42,54 @@ class User
      * @param $idUsuario Identificador del usuario
      * @return mixed
      */
-    public static function registrarTarjeta($user_id, $card_id)
+    public static function registrarTarjeta($card_id)
     {
 
         // Consulta de actualización
-        $consulta = "UPDATE users SET card_id = ? WHERE user_id = ?";
+        $consulta = "SELECT * FROM cards WHERE card_id = ? AND registered = 0";
 
         try {
             // Preparar sentencia
             $comando = Database::getInstance()->getDb()->prepare($consulta);
             // Ejecutar sentencia preparada
-            $comando->execute(array($card_id, $user_id));
+            $comando->execute(array($card_id));
 
-       
-            // Consulta para obtener el registro actualizado
-            $consulta_usuario = "SELECT * FROM users WHERE user_id = ?";
-            $comando_usuario = Database::getInstance()->getDb()->prepare($consulta_usuario);
-            $comando_usuario->execute(array($user_id));
-            $row = $comando_usuario->fetch(PDO::FETCH_ASSOC);
+            // Obtener el resultado de la selección
+            $row_seleccion = $comando->fetch(PDO::FETCH_ASSOC);
 
-            // Impresión de JSON con el registro actualizado
+            // Verificar si la tarjeta existe y no está registrada
+            if (!$row_seleccion) {
+                // La tarjeta no existe o ya está registrada
+                return $row_seleccion;
+            } else {
+                // Actualizar el campo registered a 1 en la tabla cards
+                $actualizar_registered = "UPDATE cards SET registered = 1 WHERE card_id = ?";
+                $comando_actualizar = Database::getInstance()->getDb()->prepare($actualizar_registered);
+                $comando_actualizar->execute(array($card_id));
+
+                // Consulta de inserción para crear un nuevo registro en la tabla users
+                $consulta_insercion = "INSERT INTO users (card_id) VALUES (?)";
+
+                // Preparar sentencia de inserción
+                $comando_insercion = Database::getInstance()->getDb()->prepare($consulta_insercion);
+                // Ejecutar sentencia de inserción
+                $comando_insercion->execute(array($card_id));
+
+
+                // Obtener el nuevo user_id generado automáticamente
+                $nuevo_user_id = Database::getInstance()->getDb()->lastInsertId();
+
+                // Consulta para obtener el nuevo registro creado
+                $consulta_usuario = "SELECT * FROM users WHERE user_id = ?";
+                $comando_usuario = Database::getInstance()->getDb()->prepare($consulta_usuario);
+                $comando_usuario->execute(array($nuevo_user_id));
+                $row = $comando_usuario->fetch(PDO::FETCH_ASSOC);
+
+                // Impresión de JSON con el nuevo registro creado
+                return $row;
+            }
+
             
-            return $row;
         
         } catch (PDOException $e) {
             // Aquí puedes clasificar el error dependiendo de la excepción

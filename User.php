@@ -35,13 +35,28 @@ class User
         }
     }
 
-    /**
-     * Obtiene los campos de un usuario con un identificador
-     * determinado
-     *
-     * @param $idUsuario Identificador del usuario
-     * @return mixed
-     */
+
+
+    public static function validarTarjeta($card_id)
+    {
+        $consulta = "SELECT c.*, u.* FROM cards c
+                 JOIN users u ON c.card_id = u.card_id
+                 WHERE c.card_id = ? AND c.registered = 1";
+    
+        try {
+            $comando = Database::getInstance()->getDb()->prepare($consulta);
+            $comando->execute(array($card_id));
+    
+            $row = $comando->fetch(PDO::FETCH_ASSOC);
+    
+            return $row ; // Devuelve true si la tarjeta está registrada, false si no.
+    
+        } catch (PDOException $e) {
+            return $e;
+        }
+    }
+
+
     public static function registrarTarjeta($card_id)
     {
 
